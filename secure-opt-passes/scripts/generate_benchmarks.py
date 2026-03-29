@@ -139,35 +139,136 @@ int main() {
 }
 """,
     
-    # Loop with validation
+    # Struct and Pointer manipulation
     """
 #include <stdio.h>
 #include <stdlib.h>
 
-int process_array(int *data, int size) {
-    if (size <= 0 || size > {max_size}) {
-        abort();
+struct Node {
+    int value;
+    struct Node* next;
+};
+
+void process_list(struct Node* head, int limit) {
+    struct Node* current = head;
+    int count = 0;
+    while (current != NULL) {
+        if (count >= limit) {
+            abort(); // Prevent infinite loops or arbitrary length processing
+        }
+        current->value *= {factor};
+        current = current->next;
+        count++;
     }
-    
-    int result = 0;
-    for (int i = 0; i < size; i++) {
-        if (i < 0 || i >= size) abort();
-        result += data[i] * {factor};
-    }
-    
-    return result;
 }
 
 int main() {
-    int data[{actual_size}];
-    
-    for (int i = 0; i < {actual_size}; i++) {
-        data[i] = i % {modulo};
+    int node_count = {actual_size};
+    struct Node* head = NULL;
+    for(int i = 0; i < node_count; i++) {
+        struct Node* n = (struct Node*)malloc(sizeof(struct Node));
+        if (n == NULL) abort(); // Allocation check
+        n->value = i;
+        n->next = head;
+        head = n;
     }
     
-    int result = process_array(data, {actual_size});
-    printf("Result: %d\\n", result);
+    process_list(head, {max_size});
+    return 0;
+}
+""",
+
+    # Recursive checks
+    """
+#include <stdio.h>
+#include <stdlib.h>
+
+int safe_recursive_sum(int n, int depth_limit) {
+    if (depth_limit < 0) {
+        abort();
+    }
+    if (n <= 0) return 0;
+    return n + safe_recursive_sum(n - 1, depth_limit - 1);
+}
+
+int main() {
+    int target = {actual_size};
+    int max_depth = {max_size};
     
+    int result = safe_recursive_sum(target, max_depth);
+    printf("Recursive sum: %d\\n", result);
+    return 0;
+}
+""",
+
+    # Nested Matrix operations with checks
+    """
+#include <stdio.h>
+#include <stdlib.h>
+
+#define ROWS {rows}
+#define COLS {cols}
+
+void matrix_multiply(int a[ROWS][COLS], int b[ROWS][COLS], int result[ROWS][COLS]) {
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            result[i][j] = 0;
+            for (int k = 0; k < COLS; k++) {
+                result[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+}
+
+int get_element(int matrix[ROWS][COLS], int row, int col) {
+    // Bounds checks
+    if (row < 0 || row >= ROWS) abort();
+    if (col < 0 || col >= COLS) abort();
+    
+    return matrix[row][col];
+}
+
+int main() {
+    int a[ROWS][COLS], b[ROWS][COLS], result[ROWS][COLS];
+    
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            a[i][j] = i + j;
+            b[i][j] = i * j;
+        }
+    }
+    
+    matrix_multiply(a, b, result);
+    
+    int val = get_element(result, {test_row}, {test_col});
+    printf("Result[{test_row}][{test_col}] = %d\\n", val);
+    
+    return 0;
+}
+""",
+    
+    # Nested loops with compound logic
+    """
+#include <stdio.h>
+#include <stdlib.h>
+
+int complex_computation(int width, int height) {
+    if (width <= 0 || width > {max_size}) abort();
+    if (height <= 0 || height > {max_size}) abort();
+    
+    int total = 0;
+    for(int i = 0; i < height; i++) {
+        if (i < 0) abort();
+        for(int j = 0; j < width; j++) {
+            if (j < 0) abort();
+            total += (i * j) % {modulo};
+        }
+    }
+    return total;
+}
+
+int main() {
+    printf("Comp: %d\\n", complex_computation({rows}, {cols}));
     return 0;
 }
 """
@@ -208,7 +309,11 @@ def generate_program(template_idx: int = None, seed: int = None) -> str:
     params['test_col'] = min(params['test_col'], params['cols'] - 1)
     params['end'] = min(params['end'], params['size'])
     
-    return template.format(**params)
+    # Safely replace templates without triggering ValueError on C curly braces
+    result = template
+    for key, val in params.items():
+        result = result.replace(f"{{{key}}}", str(val))
+    return result
 
 
 def generate_benchmarks(count: int, output_dir: str, seed: int = 42):
@@ -218,9 +323,16 @@ def generate_benchmarks(count: int, output_dir: str, seed: int = 42):
     random.seed(seed)
     
     for i in range(count):
-        template_idx = i % len(PROGRAM_TEMPLATES)
+        # Allow varying structure. Pick random template rather than cycling predictably
+        # This increases the chance of structural variation.
+        template_idx = random.randint(0, len(PROGRAM_TEMPLATES) - 1)
         program = generate_program(template_idx, seed=seed + i)
         
+        # Inject structural variations occasionally (like adding a dummy function)
+        if random.random() < 0.3:
+            dummy_func_str = f"\nvoid dummy_func_{i}() {{\n  int a = {random.randint(1,100)};\n  if (a < 0) abort();\n}}\n"
+            program = program + dummy_func_str
+            
         filename = f"benchmark_{i:03d}.c"
         filepath = os.path.join(output_dir, filename)
         

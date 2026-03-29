@@ -26,14 +26,19 @@ class DQN(nn.Module):
     """
     
     def __init__(self, state_dim: int, action_dim: int, 
-                 hidden_dims: List[int] = [256, 256, 128]):
+                 hidden_dims: List[int] = [256, 256, 128],
+                 use_batchnorm: bool = True):
         super(DQN, self).__init__()
         
         self.state_dim = state_dim
         self.action_dim = action_dim
+        self.use_batchnorm = use_batchnorm
         
         # Build network layers
         layers = []
+        if use_batchnorm:
+            layers.append(nn.BatchNorm1d(state_dim))  # Explicit feature normalization
+        
         prev_dim = state_dim
         
         for hidden_dim in hidden_dims:
@@ -142,6 +147,7 @@ class RLPassSelector:
             return random.randint(0, self.action_dim - 1)
         else:
             # Exploit: best action according to policy
+            self.policy_net.eval() # Explicitly set to eval mode for BatchNorm
             with torch.no_grad():
                 state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                 q_values = self.policy_net(state_tensor)
@@ -171,6 +177,9 @@ class RLPassSelector:
         reward_batch = torch.FloatTensor(batch.reward).to(self.device)
         next_state_batch = torch.FloatTensor(np.array(batch.next_state)).to(self.device)
         done_batch = torch.FloatTensor(batch.done).to(self.device)
+        
+        # Explicitly set to train mode for BatchNorm
+        self.policy_net.train()
         
         # Compute Q(s, a) for taken actions
         q_values = self.policy_net(state_batch).gather(1, action_batch)
@@ -212,12 +221,45 @@ class RLPassSelector:
         }, filepath)
     
     def load(self, filepath: str):
-        """Load model weights and training history"""
+        """Load model weights and training history.
+        
+        Auto-detects the checkpoint architecture (with/without BatchNorm)
+        and rebuilds networks with the correct dims before loading weights.
+        """
         checkpoint = torch.load(filepath, map_location=self.device)
-        self.policy_net.load_state_dict(checkpoint['policy_net'])
+        sd = checkpoint['policy_net']
+        
+        # ── Detect architecture from checkpoint keys ───────────────────────────
+        has_batchnorm = 'network.0.running_mean' in sd
+        if has_batchnorm:
+            # network.0 = BatchNorm1d(state_dim)
+            state_dim  = sd['network.0.running_mean'].shape[0]
+        else:
+            # network.0 = Linear(state_dim, hidden) → weight shape [hidden, state_dim]
+            state_dim  = sd['network.0.weight'].shape[1]
+        # Last key is the output bias: shape (action_dim,)
+        action_dim = sd[list(sd.keys())[-1]].shape[0]
+        
+        # ── Rebuild networks if dims/arch changed ─────────────────────────────
+        if (state_dim != self.state_dim or action_dim != self.action_dim
+                or has_batchnorm != getattr(self.policy_net, 'use_batchnorm', True)):
+            self.state_dim  = state_dim
+            self.action_dim = action_dim
+            self.policy_net = DQN(state_dim, action_dim,
+                                  use_batchnorm=has_batchnorm).to(self.device)
+            self.target_net = DQN(state_dim, action_dim,
+                                  use_batchnorm=has_batchnorm).to(self.device)
+            self.optimizer  = torch.optim.Adam(self.policy_net.parameters(),
+                                               lr=0.0003)
+        
+        self.policy_net.load_state_dict(sd)
         self.target_net.load_state_dict(checkpoint['target_net'])
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
-        self.loss_history = checkpoint.get('loss_history', [])
+        if 'optimizer' in checkpoint:
+            try:
+                self.optimizer.load_state_dict(checkpoint['optimizer'])
+            except Exception:
+                pass  # optimizer state mismatch is non-fatal for inference
+        self.loss_history   = checkpoint.get('loss_history', [])
         self.reward_history = checkpoint.get('reward_history', [])
     
     def get_q_values(self, state: np.ndarray) -> np.ndarray:

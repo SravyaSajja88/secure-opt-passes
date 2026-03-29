@@ -162,6 +162,11 @@ class SecurityOracle:
                         ))
                     break
         return checks
+    def compute_preservation_ratio(self, original_score: float, optimized_score: float) -> float:
+        if original_score == 0:
+            return 1.0
+        return optimized_score / original_score
+
     def is_violation(self, original_score: float, optimized_score: float,
                  threshold: float = 0.9) -> bool:
         if original_score == 0:

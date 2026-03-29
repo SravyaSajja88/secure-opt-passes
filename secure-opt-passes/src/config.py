@@ -13,8 +13,8 @@ MAX_ITERATIONS = 100      # Maximum iterations for greedy selector
 # LLVM Configuration
 CLANG_PATH = "clang-18"   # Path to clang (or just "clang")
 OPT_PATH = "opt-18"       # Path to opt (or just "opt")
-LLVM_AS_PATH = "llvm-as-14"
-LLVM_DIS_PATH = "llvm-dis-14"
+LLVM_AS_PATH = "llvm-as-18"
+LLVM_DIS_PATH = "llvm-dis-18"
 
 # Approved LLVM Optimization Passes
 APPROVED_PASSES = [
@@ -50,7 +50,7 @@ PATTERN_WEIGHTS = {
 }
 
 # RL Training Configuration
-RL_EPISODES = 500
+RL_EPISODES = 2000
 RL_LEARNING_RATE = 0.0003
 RL_BATCH_SIZE = 64
 RL_GAMMA = 0.99

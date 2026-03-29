@@ -1,0 +1,9 @@
+,size_reduction,size_reduction,size_reduction,size_reduction,security_preservation,security_preservation,security_preservation,security_preservation,num_applied,num_applied
+,mean,std,min,max,mean,std,min,max,mean,std
+method,,,,,,,,,,
+O0,0.0,0.0,0.0,0.0,100.0,0.0,100.0,100.0,0.0,0.0
+O2,8.54,54.55,-140.0,55.32,91.8,92.18,18.18,415.0,0.0,0.0
+O3,5.19,54.73,-140.0,55.32,91.18,92.48,18.18,415.0,0.0,0.0
+greedy,0.0,0.0,0.0,0.0,100.0,0.0,100.0,100.0,0.0,0.0
+random,0.0,0.0,0.0,0.0,100.0,0.0,100.0,100.0,0.0,0.0
+rl,9.34,68.66,-351.74,52.63,105.02,21.88,100.0,230.0,,

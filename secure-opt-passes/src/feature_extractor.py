@@ -38,27 +38,19 @@ class FeatureExtractor:
         names.extend([
             "num_basic_blocks",
             "num_functions",
-            "num_branches",
             "num_loops_estimated",
         ])
         
-        # Memory operations
-        names.extend([
-            "num_loads",
-            "num_stores",
-            "num_allocas",
-        ])
+        # Memory and other operations covered by opcodes
         
         # Call graph
         names.extend([
-            "num_calls",
             "num_intrinsics",
         ])
         
         # Security-related
         names.extend([
             "security_score",
-            "num_icmp",
             "num_traps",
         ])
         
@@ -78,27 +70,29 @@ class FeatureExtractor:
         features = {}
         
         # Count instructions by opcode
+        total_instructions = 0
         for opcode in self.OPCODES:
-            features[f"inst_{opcode}"] = self._count_opcode(ir_content, opcode)
+            count = self._count_opcode(ir_content, opcode)
+            features[f"inst_{opcode}"] = count
+            total_instructions += count
+            
+        # Avoid division by zero
+        total_instructions = max(1, total_instructions)
+        
+        # Normalize instruction counts
+        for opcode in self.OPCODES:
+            features[f"inst_{opcode}"] /= total_instructions
         
         # CFG metrics
-        features["num_basic_blocks"] = self._count_basic_blocks(ir_content)
-        features["num_functions"] = self._count_functions(ir_content)
-        features["num_branches"] = features["inst_br"]
-        features["num_loops_estimated"] = self._estimate_loops(ir_content)
-        
-        # Memory operations
-        features["num_loads"] = features["inst_load"]
-        features["num_stores"] = features["inst_store"]
-        features["num_allocas"] = features["inst_alloca"]
+        features["num_basic_blocks"] = self._count_basic_blocks(ir_content) / total_instructions
+        features["num_functions"] = self._count_functions(ir_content) / max(1, self._count_basic_blocks(ir_content))
+        features["num_loops_estimated"] = self._estimate_loops(ir_content) / max(1, self._count_basic_blocks(ir_content))
         
         # Call graph
-        features["num_calls"] = features["inst_call"]
-        features["num_intrinsics"] = self._count_intrinsics(ir_content)
+        features["num_intrinsics"] = self._count_intrinsics(ir_content) / total_instructions
         
-        # Security
+        # Security (Not normalized by instruction count)
         features["security_score"] = security_score
-        features["num_icmp"] = features["inst_icmp"]
         features["num_traps"] = self._count_pattern(ir_content, r'@llvm\.trap\(')
         
         # Convert to numpy array in consistent order

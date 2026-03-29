@@ -131,12 +131,11 @@ def train_rl_agent(benchmark_dir: str,
                 exist_ok=True)
     
     # Training loop
-    if verbose:
-        print("\n" + "=" * 60)
-        print("TRAINING STARTED")
-        print("=" * 60)
+    print("\n" + "=" * 60)
+    print("TRAINING STARTED")
+    print("=" * 60)
     
-    for episode in tqdm(range(episodes), desc="Training", disable=not verbose):
+    for episode in tqdm(range(episodes), desc="Training"):
         # Sample random program
         ir_file, baseline_score, program_name = random.choice(train_irs)
         
@@ -247,7 +246,7 @@ def eval_agent(agent: RLPassSelector,
             # Compile
             fd, ir_file = tempfile.mkstemp(suffix=".ll")
             os.close(fd)
-            llvm.compile_to_ir(str(c_file), ir_file)
+            llvm.compile_to_ir_stripped(str(c_file), ir_file, opt_level="0")
             
             ir_content = read_ir_file(ir_file)
             baseline_score, _ = oracle.analyze(ir_content)
@@ -363,8 +362,9 @@ def main():
                        help="Training batch size (default: 64)")
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"],
                        help="Device for training")
-    parser.add_argument("--verbose", action="store_true",
-                       help="Verbose output")
+    parser.add_argument("--no-verbose", action="store_false", dest="verbose",
+                       help="Disable verbose output")
+    parser.set_defaults(verbose=True)
     
     args = parser.parse_args()
     

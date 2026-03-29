@@ -59,7 +59,7 @@ class LLVMOptimizationEnv(gym.Env):
         
         # Enhanced state space: IR features + history + metadata
         ir_feature_dim = self.extractor.get_feature_dim()
-        history_dim = len(APPROVED_PASSES) + 10  # Pass counts + episode info
+        history_dim = len(APPROVED_PASSES) + 8  # Pass counts + episode info + security + reward stats
         self.state_dim = ir_feature_dim + history_dim
         
         self.observation_space = gym.spaces.Box(
@@ -100,7 +100,6 @@ class LLVMOptimizationEnv(gym.Env):
         self.applied_passes = []
         self.pass_application_count = np.zeros(len(APPROVED_PASSES))
         self.recent_rewards = []
-        self.cumulative_reward = 0.0
         
         # Extract features with enhanced state
         state = self._get_enhanced_state(ir_content)
@@ -162,6 +161,7 @@ class LLVMOptimizationEnv(gym.Env):
             else:
                 # Safe optimization - compute performance reward
                 size_reduction = (prev_size - new_size) / self.baseline_size if self.baseline_size > 0 else 0.0
+                perf_reward = 0.0
                 
                 if size_reduction > 0:
                     # Positive reduction - good!
@@ -190,21 +190,22 @@ class LLVMOptimizationEnv(gym.Env):
                     "pass": pass_name,
                     "size_reduction": size_reduction,
                     "security_ratio": security_ratio,
-                    "perf_reward": perf_reward if size_reduction > 0 else 0.0
+                    "perf_reward": perf_reward
                 }
         
         except Exception as e:
             # Pass failed - moderate penalty
             reward = -0.5
-            os.remove(new_ir_file)
-            self.temp_files.remove(new_ir_file)
+            if os.path.exists(new_ir_file):
+                os.remove(new_ir_file)
+                if new_ir_file in self.temp_files:
+                    self.temp_files.remove(new_ir_file)
             info = {"status": "error", "pass": pass_name, "error": str(e)}
         
         self.step_count += 1
         self.recent_rewards.append(reward)
         if len(self.recent_rewards) > 10:
             self.recent_rewards.pop(0)
-        self.cumulative_reward += reward
         
         # Get new state with enhanced features
         ir_content = read_ir_file(self.current_ir_file)
@@ -215,8 +216,7 @@ class LLVMOptimizationEnv(gym.Env):
         truncated = self.step_count >= self.max_steps
         
         # Early termination if no improvement for several steps
-        if len(self.recent_rewards) >= 20 and all(r <= 0 for r in self.recent_rewards[-10:]):
-        # ↑ was: >= 10 and last 5 — too aggressive early in training when agent hasn't learned yet
+        if len(self.recent_rewards) >= 10 and all(r <= 0 for r in self.recent_rewards[-5:]):
             terminated = True
             info["early_stop"] = "no_improvement"
         
@@ -246,7 +246,6 @@ class LLVMOptimizationEnv(gym.Env):
             self.step_count / self.max_steps,  # Progress
             self.current_size / max(self.baseline_size, 1.0),  # Size ratio
             len(self.applied_passes) / max(self.step_count, 1),  # Acceptance rate
-            self.cumulative_reward,  # Total reward so far
         ], dtype=np.float32)
         
         # Pass application counts (normalized)
@@ -307,7 +306,7 @@ class LLVMOptimizationEnv(gym.Env):
             "size_reduction": (baseline_size - self.current_size) / baseline_size * 100,
             "baseline_score": self.baseline_score,
             "final_score": self.current_score,
-            "security_preservation": self.current_score / self.baseline_score * 100 if self.baseline_score > 0 else 100,
+            "security_preservation": self.current_score / max(self.baseline_score, 1e-6) * 100 if self.baseline_score > 0 else 100,
             "num_passes_applied": len(self.applied_passes),
             "num_steps_taken": self.step_count,
             "applied_passes": self.applied_passes,

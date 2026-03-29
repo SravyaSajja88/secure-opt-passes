@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+.venv_wsl/
+env/
+venv/
+venv_wsl/
+
+# Temporary and Build files
+*.ll
+downloads/
+*.c
+!demo.c
+!tests/*.c
+!data/benchmarks/demo_security.c
+
+# Execution Plans
+*.md
+!README.md
+!project_progress_report.md
+
+# Log files
+*.log

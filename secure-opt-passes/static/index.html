@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureOpt Passes | AI Optimizer Interactive Demo</title>
+    <!-- Modern Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="background-effects">
+        <div class="blob-1"></div>
+        <div class="blob-2"></div>
+    </div>
+
+    <div class="app-container">
+        <header class="glass-header">
+            <div>
+                <h1>AI for Secure Optimization Passes</h1>
+                <p class="subtitle">Deep Q-Network maximizing code-size reduction WITHOUT removing security-critical checks.</p>
+            </div>
+            <div class="header-actions">
+                <button id="btn-run" class="btn-primary" disabled>Start Demonstration</button>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <!-- LEFT COLUMN: Input & Live Trace -->
+            <div class="col-left">
+                
+                <!-- CARD: Input C Code -->
+                <section class="glass-card" id="card-input">
+                    <div class="card-header">
+                        <h2>1. Input C Program</h2>
+                    </div>
+                    <div class="card-content">
+                        <p class="instructions">Paste your C code below or use the default security demo code.</p>
+                        <textarea id="code-editor" spellcheck="false" class="code-font" placeholder="Paste your C code here...">#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+// A simple sensitive function with checks that can be removed
+void process_secure_data(int *buffer, int size, int index) {
+    if (buffer == NULL) return;     // Null pointer check
+    if (size <= 0) return;          // Size validation
+    if (index < 0 || index >= size) { // Bounds check
+        printf("Security Error: Index out of bounds!\n");
+        return;
+    }
+    
+    // Simulate useful work that might benefit from optimization
+    int result = buffer[index] * 2;
+    for(int i = 0; i < size; i++) {
+        buffer[i] = buffer[i] + i;
+    }
+    
+    printf("Processed result: %d\n", result);
+}
+
+int main() {
+    int data[10] = {0,1,2,3,4,5,6,7,8,9};
+    process_secure_data(data, 10, 5);
+    return 0;
+}</textarea>
+                    </div>
+                </section>
+
+                <!-- CARD: RL Live Trace -->
+                <section class="glass-card hidden" id="card-trace">
+                    <div class="card-header">
+                        <h2>7. RL Pass Selection Trace</h2>
+                        <span class="live-pulse">LIVE</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="terminal-table-wrapper">
+                            <table class="terminal-table" id="table-rl-trace">
+                                <thead>
+                                    <tr>
+                                        <th>Step</th>
+                                        <th>Pass Name</th>
+                                        <th>Size</th>
+                                        <th>Δ</th>
+                                        <th>Sec %</th>
+                                        <th>Reward</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Real-time Output & Analytics -->
+            <div class="col-right">
+                
+                <!-- PROGRESS STREAM -->
+                <div class="glass-card" id="card-status">
+                    <div class="card-header">
+                        <h2>System Status</h2>
+                        <span id="status-indicator" class="status-indicator idle"></span>
+                    </div>
+                    <div class="card-content">
+                        <div id="status-log" class="terminal-log code-font">
+                            Waiting for demonstration to start...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- METRICS COMPARISON (O0, O2, O3, RL) -->
+                <section class="glass-card hidden" id="card-metrics">
+                    <div class="card-header">
+                        <h2>4 &amp; 5. Strategy Comparison</h2>
+                    </div>
+                    <div class="card-content metrics-grid">
+                        <div class="metrics-col">
+                            <h3>Size Reduction (%)</h3>
+                            <div class="bar-chart" id="chart-size">
+                                <!-- Generated Bars -->
+                            </div>
+                        </div>
+                        <div class="metrics-col">
+                            <h3>Security Preserved (%)</h3>
+                            <div class="bar-chart" id="chart-security">
+                                <!-- Generated Bars -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECURITY DEEP DIVE -->
+                <section class="glass-card hidden" id="card-deep-dive">
+                    <div class="card-header">
+                        <h2>6. Security Deep Dive (Baseline vs O3)</h2>
+                    </div>
+                    <div class="card-content" id="content-deep-dive">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                 <!-- IR COMPARISON / DOWNLOADS -->
+                 <section class="glass-card hidden" id="card-downloads">
+                    <div class="card-header">
+                        <h2>Generated Artifacts</h2>
+                    </div>
+                    <div class="card-content">
+                        <p class="instructions" style="margin-bottom: 1rem;">View or download LLVM IR at different optimization stages.</p>
+                        <div class="nav-pills" id="ir-tabs">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div class="ir-viewer mt-3">
+                           <pre><code id="ir-code-display" class="code-font" style="max-height: 250px; overflow-y: auto; display:block">Select a tab above to view IR...</code></pre>
+                        </div>
+                        <div class="download-links mt-3" id="download-buttons">
+                        </div>
+                    </div>
+                </section>
+                
+            </div>
+        </main>
+    </div>
+
+    <!-- MAIN SCRIPT -->
+    <script src="/static/script.js"></script>
+</body>
+</html>
